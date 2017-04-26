@@ -1,12 +1,15 @@
 package com.yangy.pictureediting;
 
+import android.Manifest;
 import android.annotation.TargetApi;
+import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.Paint;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.TextView;
@@ -16,8 +19,14 @@ import com.yangy.pictureediting.Model.IDrawModel;
 import com.yangy.pictureediting.Model.DrawModel;
 import com.yangy.pictureediting.Presenter.IDrawPresenter;
 import com.yangy.pictureediting.Presenter.DrawPresenter;
+import com.yanzhenjie.permission.AndPermission;
+import com.yanzhenjie.permission.PermissionListener;
+import com.yanzhenjie.permission.Rationale;
+import com.yanzhenjie.permission.RationaleListener;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener ,IDrawView {
+import java.util.List;
+
+public class MainActivity extends AppCompatActivity implements View.OnClickListener ,IDrawView ,PermissionListener {
     private Toast mToast;//提示用的短时间显示Toast
     private LoadingDialog loadingDialog;//图片加载处理时显示dialog
 
@@ -138,6 +147,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void initDates() {
+        andPermissions(this,Manifest.permission.WRITE_EXTERNAL_STORAGE);//适配6.0权限
         initPaint();
         touchView.setPaint(mPaint);
         showLoading();
@@ -386,5 +396,86 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             tv_next.setClickable(deletePath);
             tv_next.setText("无记录");
         }
+    }
+
+    /**
+     * 适配6.0权限
+     * 复制下面所有内容 build里配置远程库compile 'com.yanzhenjie:permission:1.0.5'
+     * implements PermissionListener  实现接口
+     **/
+    private static final int REQUEST_CODE_PERMISSION_LOCATION = 100;
+    private static final int REQUEST_CODE_SETTING = 300;
+    /**
+     * 申请权限
+     */
+    public static void andPermissions(Activity activity, @NonNull String... permissions){
+        if (Build.VERSION.SDK_INT >= 23) {
+            // 先判断是否有权限。
+            if(AndPermission.hasPermission(activity, permissions)) {
+                // 有权限，直接do anything.
+                return;
+            } else {
+                // 申请权限。
+                AndPermission.with(activity)
+                        .requestCode(REQUEST_CODE_PERMISSION_LOCATION)
+                        .permission(permissions)
+                        // rationale作用是：用户拒绝一次权限，再次申请时先征求用户同意，再打开授权对话框，避免用户勾选不再提示。
+                        .rationale(rationaleListener)
+                        .send();
+            }
+        }
+    }
+    private static RationaleListener rationaleListener = new RationaleListener() {
+        @Override
+        public void showRequestPermissionRationale(int requestCode,Rationale rationale) {
+            rationale.resume();
+        }
+    };
+    @Override
+    public void onSucceed(int requestCode, List<String> grantPermissions) {
+        switch (requestCode) {
+            case REQUEST_CODE_PERMISSION_LOCATION: {
+                showShort("获取权限成功");
+                break;
+            }
+        }
+    }
+
+    @Override
+    public void onFailed(int requestCode, List<String> deniedPermissions) {
+        switch (requestCode) {
+            case REQUEST_CODE_PERMISSION_LOCATION: {
+                showShort("获取权限失败");
+                break;
+            }
+        }
+
+        // 用户否勾选了不再提示并且拒绝了权限，那么提示用户到设置中授权。
+        if (AndPermission.hasAlwaysDeniedPermission(this, deniedPermissions)) {
+            // 第一种：用默认的提示语。
+            AndPermission.defaultSettingDialog(this, REQUEST_CODE_SETTING).show();
+
+            // 第二种：用自定义的提示语。
+//             AndPermission.defaultSettingDialog(this, REQUEST_CODE_SETTING)
+//                     .setTitle("权限申请失败")
+//                     .setMessage("我们需要的一些权限被您拒绝或者系统发生错误申请失败，请您到设置页面手动授权，否则功能无法正常使用！")
+//                     .setPositiveButton("好，去设置")
+//                     .show();
+
+//            第三种：自定义dialog样式。
+//            SettingService settingHandle = AndPermission.defineSettingDialog(this, REQUEST_CODE_SETTING);
+//            你的dialog点击了确定调用：
+//            settingHandle.execute();
+//            你的dialog点击了取消调用：
+//            settingHandle.cancel();
+        }
+    }
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[]
+            grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        // listener方式，最后一个参数是PermissionListener。
+        AndPermission.onRequestPermissionsResult(requestCode, permissions, grantResults, this);
     }
 }
