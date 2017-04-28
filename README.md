@@ -26,3 +26,14 @@ build文件中引用compile 'com.yanzhenjie:permission:1.0.5'
 MainActivity中实现PermissionListener接口 
 调用andPermissions（）方法添加6.0权限
 
+CoordinateBean储存房间坐标的实体类
+TaggingBean储存通过标准比例处理后任务圆点的坐标的实体类
+RoomBean储存通过标准比例处理后房间名称的坐标的实体类
+ProblemListBean储存问题信息的实体类
+ProblemCoordinate储存问题坐标的实体类
+RoomListBean储存房间信息的实体类
+IDrawingView回调接口
+BitmapUtils 通过图片路径获取图片的bitmap对象（支持本地路径和网络路径）
+CoordinateUtils 坐标适配处理的帮助类
+
+
