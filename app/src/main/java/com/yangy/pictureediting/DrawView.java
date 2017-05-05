@@ -7,16 +7,11 @@ import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
-import android.graphics.PointF;
 import android.os.Environment;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
-
-import com.yangy.pictureediting.Bean.DrawPath;
-import com.yangy.pictureediting.Model.IDrawModel;
-import com.yangy.pictureediting.Presenter.IDrawPresenter;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -29,6 +24,7 @@ import java.util.Map;
 /**
  * Created by yangy on 17/4/21.
  */
+
 /**
  * 自定义图片编辑控件
  */
@@ -56,6 +52,9 @@ public class DrawView extends View {
     private int mImageWidth = 480;
     private int mImageHeight = 800;
 
+    private List<DrawPath> mSavePath = new ArrayList<>();//保存绘制的记录
+    private List<DrawPath> mDeletePath = new ArrayList<>();//保存清除的记录
+
     public int mode = 0;
     private Matrix matrix = new Matrix();
     private Matrix matrix1 = new Matrix();//记录原图矩阵
@@ -65,11 +64,10 @@ public class DrawView extends View {
     private float initDis = 1f;//记录按下时两点的距离
     private float[] values = new float[9];
     private float[] startValues = new float[9];
-    public boolean lock=true;//用来判断手势，true代表缩放偏移，false代表编辑图片
-    private long mLastTime=0L;//记录上一次触摸时间
-    private long mCurTime=0L;//记录当前触摸时间
-    private IDrawModel userModel;
-    private IDrawPresenter presenter;
+    public boolean lock = true;//用来判断手势，true代表缩放偏移，false代表编辑图片
+    private long mLastTime = 0L;//记录上一次触摸时间
+    private long mCurTime = 0L;//记录当前触摸时间
+    private IDrawView presenter;
 
     public DrawView(Context context, AttributeSet attr, int defStyle) {
         super(context, attr, defStyle);
@@ -85,10 +83,24 @@ public class DrawView extends View {
         super(context);
         init();
     }
-    public void setMvp(IDrawModel iUserModel, IDrawPresenter iUserPresenter){
-        userModel=iUserModel;
-        presenter=iUserPresenter;
+
+    /**
+     * 设置接口回调
+     *
+     * @param iDrawView 接口对象
+     */
+    public void setInterfaceCallback(IDrawView iDrawView) {
+        presenter = iDrawView;
     }
+
+    /**
+     * 用来保存操作信息
+     */
+    public class DrawPath {
+        public Path path;
+        public Paint paint;
+    }
+
     private void init() {
         mImageWidth = getMeasuredWidth();
         mImageHeight = getMeasuredHeight();
@@ -130,9 +142,9 @@ public class DrawView extends View {
     public boolean onTouchEvent(MotionEvent event) {
         float x = event.getX();
         float y = event.getY();
-        Map<String,Float> map1= getImageViewIneerSize();
+        Map<String, Float> map1 = getImageViewIneerSize();
         //仿美图秀秀图片编辑
-        int pointCount=event.getPointerCount();
+        int pointCount = event.getPointerCount();
         switch (event.getAction() & MotionEvent.ACTION_MASK) {
             case MotionEvent.ACTION_DOWN://把画笔移动到触摸处开始绘画
                 mode = DRAW;
@@ -148,27 +160,28 @@ public class DrawView extends View {
                 postInvalidate();
                 break;
             case MotionEvent.ACTION_UP:
-                if(mode == DRAW) {//手指抬起时将手指从触摸到抬起的路线绘制到Canvas上
+                if (mode == DRAW) {//手指抬起时将手指从触摸到抬起的路线绘制到Canvas上
                     mCaPath.lineTo(posX * map1.get("scaleX"), posY * map1.get("scaleY"));
                     mCaPath.offset(-map1.get("offsetX") * map1.get("scaleX"), -map1.get("offsetY") * map1.get("scaleY"));
                     mCanvas.drawPath(mCaPath, mPaint);
-                    userModel.savePath(mDrawPath);
-                    presenter.loadDraw();
+                    mSavePath.add(mDrawPath);
+                    boolean back = (mSavePath.size() != 0 ? true : false);
+                    presenter.setBack(back);
                     mPath = null;
                     postInvalidate();
                     matrix.getValues(values);
-                }else {//记录缩放和偏移后的矩阵
+                } else {//记录缩放和偏移后的矩阵
                     matrix.getValues(values);
                     saveMatrix.set(matrix);
                     matrix1.getValues(startValues);
-                    if(mBitmap != null) {
+                    if (mBitmap != null) {
                         setEdge();
                     }
                 }
                 break;
             case MotionEvent.ACTION_MOVE:
-                if(pointCount < 2) {//根据移动路线绘制圆滑曲线，即贝塞尔曲线
-                    if(mode == DRAW) {
+                if (pointCount < 2) {//根据移动路线绘制圆滑曲线，即贝塞尔曲线
+                    if (mode == DRAW) {
                         float dx = Math.abs(x - posX);
                         float dy = Math.abs(y - posY);
                         if (dx > TOUCH_TOLERANCE || dy > TOUCH_TOLERANCE) {
@@ -179,7 +192,7 @@ public class DrawView extends View {
                         }
                         postInvalidate();
                     }
-                }else {
+                } else {
                     //当一只手指绘画之后没有抬起来再按下第二只手指，会中断绘画操作并进行缩放偏移。 处理：当第二只手指按下时清除绘画
                     mPath = new Path();
                     mCaPath = new Path();
@@ -201,97 +214,6 @@ public class DrawView extends View {
                 mode = DRAG_ZOOM;
                 break;
         }
-
-        //**************************图片锁定编辑*************************
-//        if(!lock){//编辑图片
-//            switch (event.getAction()) {
-//                case MotionEvent.ACTION_DOWN://把画笔移动到触摸处开始绘制
-//                    mPath = new Path();
-//                    mCaPath=new Path();
-//                    mDrawPath = new DrawPath();
-//                    mDrawPath.paint = new Paint(mPaint);
-//                    mDrawPath.path = mCaPath;
-//                    mPath.moveTo(x, y);
-//                    mCaPath.moveTo(x*map1.get("scaleX"), y*map1.get("scaleY"));
-//                    posX = x;
-//                    posY = y;
-//                    postInvalidate();
-//                    break;
-//                case MotionEvent.ACTION_UP://手指抬起时绘制手指从触摸到抬起的路线
-//                    mCaPath.lineTo(posX * map1.get("scaleX"), posY * map1.get("scaleY"));
-//                    mCaPath.offset(-map1.get("offsetX")*map1.get("scaleX"), -map1.get("offsetY")*map1.get("scaleY"));
-//                    mCanvas.DrawPath(mCaPath, mPaint);
-//                    mSavePath.add(mDrawPath);
-//                    mPath = null;
-//                    postInvalidate();
-//                    matrix.getValues(values);
-//                    break;
-//                case MotionEvent.ACTION_MOVE://根据移动路线绘制圆滑曲线，即贝塞尔曲线
-//                    float dx = Math.abs(x - posX);
-//                    float dy = Math.abs(y - posY);
-//                    if (dx > TOUCH_TOLERANCE || dy > TOUCH_TOLERANCE) {
-//                        mPath.quadTo(posX, posY, (x + posX) / 2, (y + posY) / 2);
-//                        mCaPath.quadTo(posX * map1.get("scaleX"), posY * map1.get("scaleY"), (x + posX) * map1.get("scaleY") / 2, (y + posY) * map1.get("scaleY") / 2);
-//                        posX = x;
-//                        posY = y;
-//                    }
-//                    postInvalidate();
-//                    break;
-//            }
-//        }else{//缩放偏移
-//            int pointCount=event.getPointerCount();//得到触摸的手指数
-//            switch (event.getAction()& MotionEvent.ACTION_MASK) {
-//                case MotionEvent.ACTION_DOWN:
-//                    matrix.set(saveMatrix);
-//                    x_down = event.getX();
-//                    y_down = event.getY();
-//                    mLastTime = mCurTime;
-//                    mCurTime= System.currentTimeMillis();
-//                    if (mCurTime - mLastTime < 200) {//当前触摸时间减上一次触摸时间小于200毫秒，将图片缩放到原图大小
-//                        matrix.set(matrix1);
-//                        postInvalidate();
-//                        return true;
-//                    }
-//                    mode=DRAG;
-//                    break;
-//
-//                case MotionEvent.ACTION_POINTER_UP:
-//                    mode=NONE;
-//                    break;
-//                case MotionEvent.ACTION_POINTER_DOWN:
-//                    initDis = spacing(event);//两点按下时的距离
-//                    mode=ZOOM;
-//                    break;
-//                case MotionEvent.ACTION_MOVE:
-//                    if (mode==DRAG) {//设置偏移
-//                        matrix.set(saveMatrix);
-//                        if(Math.abs(event.getX()-x_down)>10f|| Math.abs(event.getY()-y_down)>10){
-//                            matrix.postTranslate(event.getX() - x_down, event.getY() - y_down);
-//                            postInvalidate();
-//                        }
-//                    } else if (mode==ZOOM&&pointCount>=2) {//设置缩放
-//                        matrix.set(saveMatrix);
-//                        //根据两点当前的距离和按下时的距离计算缩放系数
-//                        float newDist = spacing(event);
-//                        if (newDist > 10f) {
-//                            float tScale = newDist / initDis;
-//                            midPoint(mid, event);
-//                            matrix.postScale(tScale, tScale,mImageWidth/2,mImageHeight/2);
-//                        }
-//                        postInvalidate();
-//                    }
-//                    break;
-//                case MotionEvent.ACTION_UP:
-//                    mode=NONE;
-//                    matrix.getValues(values);
-//                    saveMatrix.set(matrix);
-//                    matrix1.getValues(startValues);
-//                    if(mBitmap != null) {
-//                        setEdge();
-//                    }
-//                    break;
-//            }
-//        }
         return true;
     }
 
@@ -308,24 +230,26 @@ public class DrawView extends View {
         getImageViewIneerSize();
         postInvalidate();
     }
+
     /**
      * Matrix{[cosX,-sinX,translateX][sinX,cosX,translateY][0,0,scale]}
      * sinX和cosX，表示旋转角度的cos值和sin值，旋转角度是按顺时针方向计算的。
      * translateX和translateY表示x和y的平移量。scale是缩放的比例，1是不变，2是表示缩放1/2。
+     *
      * @return 返回矩阵缩放平移系数
      */
-    private Map<String,Float> getImageViewIneerSize(){
-        Map<String,Float> size=new HashMap<String,Float>();
+    private Map<String, Float> getImageViewIneerSize() {
+        Map<String, Float> size = new HashMap<String, Float>();
         //获得ImageView中Image的变换矩阵
         matrix.getValues(values);
         //Image在绘制过程中的变换矩阵，从中获得x和y方向的缩放系数
         float sx = values[0];
         float sy = values[4];
         //计算Image在屏幕上实际绘制的宽高
-        size.put("scaleX",  1/sx);
-        size.put("scaleY",  1/sy);
+        size.put("scaleX", 1 / sx);
+        size.put("scaleY", 1 / sy);
         size.put("offsetX", values[2]); //X轴的translate的值
-        size.put("offsetY",values[5]);//Y轴的translate的值
+        size.put("offsetY", values[5]);//Y轴的translate的值
         return size;
     }
 
@@ -335,11 +259,11 @@ public class DrawView extends View {
         try {
             float x = event.getX(1) - event.getX(0);
             float y = event.getY(1) - event.getY(0);
-            float z=(float) Math.sqrt(x * x + y * y);
-            if(z>=x&&z>=y){
-                mode=ZOOM;
-            }else{
-                mode=DRAG;
+            float z = (float) Math.sqrt(x * x + y * y);
+            if (z >= x && z >= y) {
+                mode = ZOOM;
+            } else {
+                mode = DRAG;
             }
             return z;
         } catch (IllegalArgumentException ex) {
@@ -350,6 +274,7 @@ public class DrawView extends View {
 
     /**
      * 显示需要编辑的原图片
+     *
      * @param imagePath 原图片bitmap对象
      * @return true代表图片显示成功，false代表图片显示失败
      */
@@ -359,7 +284,7 @@ public class DrawView extends View {
 
         float nxScale;
         float nyScale;
-        float tScale=1.0f;
+        float tScale = 1.0f;
         if (width != 0 && height != 0) {//如果图片的宽高不等于0代表图片显示成功
             nxScale = (float) width / mImageWidth;
             nyScale = (float) height / mImageHeight;
@@ -367,42 +292,42 @@ public class DrawView extends View {
                 if (nxScale > nyScale) {
                     width = (int) (width / nxScale);
                     height = (int) (height / nxScale);
-                    tScale=nxScale;
+                    tScale = nxScale;
                 } else {
                     width = (int) (width / nyScale);
                     height = (int) (height / nyScale);
-                    tScale=nyScale;
+                    tScale = nyScale;
                 }
             }
             if (nxScale >= 1 && nyScale < 1) {
                 width = mImageWidth;
                 height = (int) (height / nxScale);
-                tScale=nxScale;
+                tScale = nxScale;
             }
             if (nxScale <= 1 && nyScale >= 1) {
                 height = mImageHeight;
                 width = (int) (width / nyScale);
-                tScale=nyScale;
+                tScale = nyScale;
             }
             matrix.postScale(1 / tScale, 1 / tScale);
-            matrix.postTranslate((mImageWidth - width) / 2, (mImageHeight - height) / 2);
+            matrix.postTranslate((mImageWidth - width) / 2, (mImageHeight - height) / 2);//图片居中显示
             matrix1.set(matrix);
             saveMatrix.set(matrix);
             getImageViewIneerSize();
-            int tempW=imagePath.getWidth();
-            int tempH=imagePath.getHeight();
-            if(imagePath.getWidth()>4000){
-                tempW=tempW/2;
-                tempH=tempH/2;
+            int tempW = imagePath.getWidth();
+            int tempH = imagePath.getHeight();
+            if (imagePath.getWidth() > 4000) {
+                tempW = tempW / 2;
+                tempH = tempH / 2;
             }
             mBitmap = Bitmap.createScaledBitmap(imagePath, tempW, tempH, true);
             mBottomBitmap = Bitmap.createBitmap(tempW, tempH, Bitmap.Config.ARGB_4444);
-            if(mBottomBitmap==null){
+            if (mBottomBitmap == null) {
                 mBitmap.recycle();
                 return false;
             }
-            userModel.saveClear();
-            userModel.deleteClear();
+            mSavePath.clear();
+            mDeletePath.clear();
             mCanvas.setBitmap(mBottomBitmap);
             mCanvas.drawBitmap(mBitmap, 0, 0, mBitmapPaint);
             postInvalidate();
@@ -414,6 +339,7 @@ public class DrawView extends View {
 
     /**
      * 设置画笔属性
+     *
      * @param paint
      */
     public void setPaint(Paint paint) {
@@ -423,6 +349,7 @@ public class DrawView extends View {
 
     /**
      * 图片编辑完成之后保存到本地
+     *
      * @return 图片本地路径
      */
     public String saveImage() {
@@ -430,14 +357,14 @@ public class DrawView extends View {
             return null;
         }
         //创建存放缓存的文件夹
-        File outfile = new File(Environment.getExternalStorageDirectory().getPath(),"PictureEditing/cache/");
+        File outfile = new File(Environment.getExternalStorageDirectory().getPath(), "PictureEditing/cache/");
         //如果文件不存在，则创建一个新文件
-        if(!outfile.isFile()){
+        if (!outfile.isFile()) {
             outfile.mkdirs();
         }
         File file = new File(Environment.getExternalStorageDirectory().getPath(), "/PictureEditing/cache/tempPic" + new Date().getTime() + ".jpg");
         try {
-            if(!file.createNewFile()){
+            if (!file.createNewFile()) {
                 file.delete();
                 file.createNewFile();
             }
@@ -455,7 +382,8 @@ public class DrawView extends View {
 
     /**
      * 图片编辑完成之后保存到本地   （如果保存失败可能是文件夹不存在 需要先创建文件夹）
-     * @param graphPath  想要保存的路径
+     *
+     * @param graphPath 想要保存的路径
      * @return 图片本地路径
      */
     public String savePhotoImage(String graphPath) {
@@ -464,7 +392,7 @@ public class DrawView extends View {
         }
         File file = new File(graphPath);
         try {
-            if(!file.createNewFile()){
+            if (!file.createNewFile()) {
                 file.delete();
                 file.createNewFile();
             }
@@ -484,8 +412,8 @@ public class DrawView extends View {
      * 清除之前编辑的内容
      */
     public void clearImage() {
-        userModel.saveClear();
-        userModel.deleteClear();
+        mSavePath.clear();
+        mDeletePath.clear();
         repaint();
         postInvalidate();
     }
@@ -494,15 +422,15 @@ public class DrawView extends View {
      * 清除上一步的操作
      */
     public void undo() {
-        int nSize = userModel.saveSize();
+        int nSize = mSavePath.size();
         if (nSize >= 1) {
-            userModel.deletePath(userModel.getSavePath(nSize - 1));
-            userModel.removeSavePath(nSize - 1);
+            mDeletePath.add(0, mSavePath.get(nSize - 1));
+            mSavePath.remove(nSize - 1);
         } else {
             return;
         }
         repaint();
-        Iterator<DrawPath> iter = userModel.getSavePathList().iterator();
+        Iterator<DrawPath> iter = mSavePath.iterator();
         DrawPath temp;
         while (iter.hasNext()) {
             temp = iter.next();
@@ -515,15 +443,15 @@ public class DrawView extends View {
      * 重绘清除的操作
      */
     public void redo() {
-        int nSize = userModel.deleteSize();
+        int nSize = mDeletePath.size();
         if (nSize >= 1) {
-            userModel.savePath(userModel.getDeletePath(0));
-            userModel.removeDeletePath(0);
+            mSavePath.add(mDeletePath.get(0));
+            mDeletePath.remove(0);
         } else {
             return;
         }
         repaint();
-        Iterator<DrawPath> iter = userModel.getSavePathList().iterator();
+        Iterator<DrawPath> iter = mSavePath.iterator();
         DrawPath temp;
         while (iter.hasNext()) {
             temp = iter.next();
@@ -535,8 +463,11 @@ public class DrawView extends View {
     /**
      * 重绘
      */
-    private void repaint(){
-        presenter.loadDraw();
+    private void repaint() {
+        boolean back = (mSavePath.size() != 0 ? true : false);
+        presenter.setBack(back);
+        boolean next = (mDeletePath.size() != 0 ? true : false);
+        presenter.setNext(next);
         if (mBitmap != null) {
             int width = mBitmap.getWidth();
             int height = mBitmap.getHeight();

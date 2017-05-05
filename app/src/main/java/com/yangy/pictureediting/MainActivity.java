@@ -15,10 +15,6 @@ import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.yangy.pictureediting.Model.IDrawModel;
-import com.yangy.pictureediting.Model.DrawModel;
-import com.yangy.pictureediting.Presenter.IDrawPresenter;
-import com.yangy.pictureediting.Presenter.DrawPresenter;
 import com.yanzhenjie.permission.AndPermission;
 import com.yanzhenjie.permission.PermissionListener;
 import com.yanzhenjie.permission.Rationale;
@@ -26,7 +22,7 @@ import com.yanzhenjie.permission.RationaleListener;
 
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener ,IDrawView ,PermissionListener {
+public class MainActivity extends AppCompatActivity implements View.OnClickListener, IDrawView, PermissionListener {
     private Toast mToast;//提示用的短时间显示Toast
     private LoadingDialog loadingDialog;//图片加载处理时显示dialog
 
@@ -61,8 +57,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private String graphPath = "";//需要编辑的原图片路径（可以是本地图片路径，也可以是网络图片URL）
     private String picPath = "";//图片编辑完成之后保存到本地的路径
-    private IDrawModel userModel;
-    IDrawPresenter presenter;
     // 原图片bitmap对象
     private Bitmap bitmapNet;
     private Handler handler = new Handler() {
@@ -100,8 +94,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         loadingDialog = new LoadingDialog(this);
-        userModel = new DrawModel();
-        presenter=new DrawPresenter(this,userModel);
         //本地图片路径
 //        File file = new File(Environment.getExternalStorageDirectory().getPath(),
 //                "QuanlityCs" + File.separator + "18" + File.separator + "graphList" + File.separator + "1" + ".jpg");
@@ -117,8 +109,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private void initView() {
         touchView = (DrawView) findViewById(R.id.myView);
-        //传递用来存储操作的Model和Presenter对象
-        touchView.setMvp(userModel,presenter);
+        //设置接口回调
+        touchView.setInterfaceCallback(this);
 
         rectRedPaint = findViewById(R.id.rectRedPaint);
         rectYellowPaint = findViewById(R.id.rectYellowPaint);
@@ -147,7 +139,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void initDates() {
-        andPermissions(this,Manifest.permission.WRITE_EXTERNAL_STORAGE);//适配6.0权限
+        andPermissions(this, Manifest.permission.WRITE_EXTERNAL_STORAGE);//适配6.0权限
         initPaint();
         touchView.setPaint(mPaint);
         showLoading();
@@ -378,10 +370,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     @Override
     public void setBack(boolean savePath) {
-        if (savePath){
+        if (savePath) {
             tv_back.setClickable(savePath);
             tv_back.setText("回退");
-        }else {
+        } else {
             tv_back.setClickable(savePath);
             tv_back.setText("无绘画");
         }
@@ -389,10 +381,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     @Override
     public void setNext(boolean deletePath) {
-        if (deletePath){
+        if (deletePath) {
             tv_next.setClickable(deletePath);
             tv_next.setText("前进");
-        }else {
+        } else {
             tv_next.setClickable(deletePath);
             tv_next.setText("无记录");
         }
@@ -405,13 +397,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
      **/
     private static final int REQUEST_CODE_PERMISSION_LOCATION = 100;
     private static final int REQUEST_CODE_SETTING = 300;
+
     /**
      * 申请权限
      */
-    public static void andPermissions(Activity activity, @NonNull String... permissions){
+    public static void andPermissions(Activity activity, @NonNull String... permissions) {
         if (Build.VERSION.SDK_INT >= 23) {
             // 先判断是否有权限。
-            if(AndPermission.hasPermission(activity, permissions)) {
+            if (AndPermission.hasPermission(activity, permissions)) {
                 // 有权限，直接do anything.
                 return;
             } else {
@@ -425,12 +418,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
         }
     }
+
     private static RationaleListener rationaleListener = new RationaleListener() {
         @Override
-        public void showRequestPermissionRationale(int requestCode,Rationale rationale) {
+        public void showRequestPermissionRationale(int requestCode, Rationale rationale) {
             rationale.resume();
         }
     };
+
     @Override
     public void onSucceed(int requestCode, List<String> grantPermissions) {
         switch (requestCode) {
@@ -470,6 +465,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 //            settingHandle.cancel();
         }
     }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[]
             grantResults) {
