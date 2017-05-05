@@ -1,6 +1,9 @@
 # PictureEditing
 图片编辑控件
 
+![image](https://github.com/qiushanyueyy/PictureEditing/blob/master/app/src/image/1.png)
+![image](https://github.com/qiushanyueyy/PictureEditing/blob/master/app/src/image/2.png)
+
 重写onTouchEvent()方法监听触摸事件：                                    
 当只有一个手指触摸时设置mode状态为DRAW，代表绘画操作。
 MotionEvent.ACTION_DOWN:把画笔移动到触摸处开始绘画，
