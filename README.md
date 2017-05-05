@@ -49,6 +49,7 @@ dialog_loading.xml中引用com.pnikosis.materialishprogress.ProgressWheel
 LoadingDialog耗时操作时显示的dialog
 Drawview   自定义画图控件
 Drawbean 储存操作的实体类
+IDrawView 回调接口
 BitmapUtils 通过图片路径获取图片的bitmap对象（支持本地路径和网络路径）
 ```
 
