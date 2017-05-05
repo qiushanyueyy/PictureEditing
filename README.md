@@ -21,4 +21,7 @@ Drawview   自定义画图控件
 Drawbean 储存操作的实体类
 BitmapUtils 通过图片路径获取图片的bitmap对象（支持本地路径和网络路径）
 
-
+适配Android6.0权限
+build文件中引用compile 'com.yanzhenjie:permission:1.0.5'
+MainActivity中实现PermissionListener接口 
+调用andPermissions（）方法添加6.0权限
