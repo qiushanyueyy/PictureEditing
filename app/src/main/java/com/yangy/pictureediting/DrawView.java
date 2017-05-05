@@ -165,7 +165,7 @@ public class DrawView extends View {
                     mCaPath.offset(-map1.get("offsetX") * map1.get("scaleX"), -map1.get("offsetY") * map1.get("scaleY"));
                     mCanvas.drawPath(mCaPath, mPaint);
                     mSavePath.add(mDrawPath);
-                    boolean back = (mSavePath.size() != 0 ? true : false);
+                    boolean back = (mSavePath.size() > 0 ? true : false);
                     presenter.setBack(back);
                     mPath = null;
                     postInvalidate();
@@ -464,9 +464,9 @@ public class DrawView extends View {
      * 重绘
      */
     private void repaint() {
-        boolean back = (mSavePath.size() != 0 ? true : false);
+        boolean back = (mSavePath.size() > 0 ? true : false);
         presenter.setBack(back);
-        boolean next = (mDeletePath.size() != 0 ? true : false);
+        boolean next = (mDeletePath.size() > 0 ? true : false);
         presenter.setNext(next);
         if (mBitmap != null) {
             int width = mBitmap.getWidth();
