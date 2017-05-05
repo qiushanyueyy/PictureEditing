@@ -9,7 +9,7 @@
 compile 'com.yanzhenjie:album:1.0.5'
 ```
 
-# 重写onTouchEvent()方法监听触摸事件：  
+# 手势实现：重写onTouchEvent()方法监听触摸事件：  
 ```java
 当只有一个手指触摸时设置mode状态为DRAW，代表绘画操作。
 MotionEvent.ACTION_DOWN:把画笔移动到触摸处开始绘画，
