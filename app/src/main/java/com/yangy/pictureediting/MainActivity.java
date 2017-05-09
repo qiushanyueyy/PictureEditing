@@ -22,7 +22,7 @@ import com.yanzhenjie.permission.RationaleListener;
 
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener, IDrawView, PermissionListener {
+public class MainActivity extends AppCompatActivity implements View.OnClickListener, PermissionListener {
     private Toast mToast;//提示用的短时间显示Toast
     private LoadingDialog loadingDialog;//图片加载处理时显示dialog
 
@@ -110,7 +110,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private void initView() {
         touchView = (DrawView) findViewById(R.id.myView);
         //设置接口回调
-        touchView.setInterfaceCallback(this);
+        touchView.setInterfaceCallback(idrawview);
 
         rectRedPaint = findViewById(R.id.rectRedPaint);
         rectYellowPaint = findViewById(R.id.rectYellowPaint);
@@ -368,27 +368,29 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-    @Override
-    public void setBack(boolean savePath) {
-        if (savePath) {
-            tv_back.setClickable(savePath);
-            tv_back.setText("回退");
-        } else {
-            tv_back.setClickable(savePath);
-            tv_back.setText("无绘画");
+    private IDrawView idrawview = new IDrawView() {
+        @Override
+        public void setBack(boolean savePath) {
+            if (savePath) {
+                tv_back.setClickable(savePath);
+                tv_back.setText("回退");
+            } else {
+                tv_back.setClickable(savePath);
+                tv_back.setText("无绘画");
+            }
         }
-    }
 
-    @Override
-    public void setNext(boolean deletePath) {
-        if (deletePath) {
-            tv_next.setClickable(deletePath);
-            tv_next.setText("前进");
-        } else {
-            tv_next.setClickable(deletePath);
-            tv_next.setText("无记录");
+        @Override
+        public void setNext(boolean deletePath) {
+            if (deletePath) {
+                tv_next.setClickable(deletePath);
+                tv_next.setText("前进");
+            } else {
+                tv_next.setClickable(deletePath);
+                tv_next.setText("无记录");
+            }
         }
-    }
+    };
 
     /**
      * 适配6.0权限
