@@ -3,7 +3,7 @@
 ![image](https://github.com/qiushanyueyy/PictureEditing/blob/master/app/src/image/1.png)
 ![image](https://github.com/qiushanyueyy/PictureEditing/blob/master/app/src/image/2.png)
 
-# Dependencies
+# 6.0权限Dependencies
 * Gradle：
 ```groovy
 compile 'com.yanzhenjie:permission:1.0.5'
