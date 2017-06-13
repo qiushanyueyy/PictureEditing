@@ -6,7 +6,7 @@
 # Dependencies
 * Gradle：
 ```groovy
-compile 'com.yanzhenjie:album:1.0.5'
+compile 'com.yanzhenjie:permission:1.0.5'
 ```
 
 # 手势实现：重写onTouchEvent()方法监听触摸事件：  
